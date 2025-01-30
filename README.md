@@ -60,3 +60,12 @@ docker images | grep {YourImageName}
 # By default I've named it robot_sim
 ```
 
+## Post Commands
+
+* Provide the control access to the X server, which is responsible for handling graphical displays on linux. You could do this by: 
+```bash
+# run this in your host shell
+xhost +local:root 
+#or 
+xhost +
+```
