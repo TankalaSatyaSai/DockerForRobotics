@@ -60,6 +60,19 @@ docker images | grep {YourImageName}
 # By default I've named it robot_sim
 ```
 
+* After the image is created to run the services in docker compose:
+```bash
+docker-compose up 
+```
+* If you want to run only a specific service:
+```bash
+docker compose up -d robot_sim
+```
+* To enter into a specific container: 
+```bash
+docker compose exec robot_sim bash
+```
+  
 ## Post Commands
 
 * Provide the control access to the X server, which is responsible for handling graphical displays on linux. You could do this by: 
@@ -68,4 +81,43 @@ docker images | grep {YourImageName}
 xhost +local:root 
 #or 
 xhost +
+```
+
+## Commands to be noted
+
+* To remove all unused Docker resources (images, containers, networks, and volumes), type:
+```bash
+docker system prune
+```
+* If at any stage you want to remove the image you just created, type:
+```bash
+docker rmi manipulation:latest
+```
+* To remove unused images, you would type:
+```bash
+docker image prune
+```
+* To remove all images, you would do this:
+```bash
+docker image prune -a
+```
+* You can also free up space on your computer using this command (I run this command regularly):
+```bash
+docker system prune
+```
+* To inspect an image’s details:
+```bash
+docker image inspect manipulation:latest
+```
+* To view the history of an image’s layers:
+```bash
+docker history manipulation:latest
+```
+* To save an image as an archive:
+```bash
+docker save manipulation:latest > manipulation.tar
+```
+* To load an image from a tar archive:
+```bash
+docker load < manipulation.tar
 ```
