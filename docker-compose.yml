@@ -1,0 +1,28 @@
+version: '3.3'
+services:
+  robot_sim: &robot_sim
+    container_name: manipulation
+    image: robot_sim:latest
+    ipc: host
+    network_mode: host
+    privileged: true
+    environment:
+      - DISPLAY
+      - XAUTHORITY=/tmp/.Xauthority
+    volumes:
+      - $HOME/$USER/shared/ros2:/root/shared/ros2
+      - $HOME/.Xauthority:/tmp/.Xauthority
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev:/dev
+    command: ["tail", "-f", "/dev/null"]
+
+  minimal_publisher:
+    <<: *robot_sim  # This uses all the same settings as the 'manipulation' service
+    container_name: minimal_publisher
+    command: ["ros2", "run", "demo_nodes_cpp", "talker"]
+
+  # Subscriber service: Runs the demo listener node
+  minimal_subscriber:
+    <<: *robot_sim  # This uses all the same settings as the 'manipulation' service
+    container_name: minimal_subscriber
+    command: ["ros2", "run", "demo_nodes_cpp", "listener"]  
