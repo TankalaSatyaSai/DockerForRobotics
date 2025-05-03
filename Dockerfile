@@ -51,3 +51,28 @@ RUN source /ur_ws/install/setup.bash \
 COPY ./entrypoint.sh /
 ENTRYPOINT [ "/entrypoint.sh" ]
 
+#####################
+# Development Image #
+#####################
+
+FROM overlay AS dev
+
+ARG USERNAME=devuser
+ARG UID=1000
+ARG GID=${UID}
+
+RUN apt-get update \
+    &amp;&amp; apt-get install -y --no-install-recommends \
+    gdb gdbserver nano
+
+RUN groupadd --gid $GID $USERNAME \
+    &amp;&amp; useradd --uid ${GID} --gid ${UID} --create-home ${USERNAME} \
+    &amp;&amp; echo ${USERNAME} ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/${USERNAME} \
+    &amp;&amp; chmod 0440 /etc/sudoers.d/${USERNAME} \
+    &amp;&amp; mkdir -p /home/${USERNAME} \
+    &amp;&amp; chown -R ${UID}:${GID} /home/${USERNAME}
+    
+RUN chown -R ${UID}:${GID} /overlay_ws/
+
+USER ${USERNAME}
+RUN echo "source /entrypoint.sh" >> /home/${USERNAME}/.bashrc
