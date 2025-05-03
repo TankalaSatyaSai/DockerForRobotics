@@ -1,58 +1,53 @@
-ARG ROS_DISTRO="rolling"
+ARG ROS_DISTRO="jazzy"
 
-FROM ros:${ROS_DISTRO}-ros-base
+################################
+# Base Image for UR Simulation #
+################################
 
-LABEL maintainer="TankalaSatyaSai<satyasai2004.edu@gmail.com>"
+FROM osrf/ros:${ROS_DISTRO}-desktop AS base
 
-ENV PIP_BREAK_SYSTEM_PACKAGES=1
-ENV DEBIAN_FRONTEND=noninteractive
+ENV ROS_DISTRO=${ROS_DISTRO}
 
 SHELL ["/bin/bash", "-c"]
 
-RUN apt-get update -q && \
-    apt-get upgrade -yq && \
-    apt-get install -yq --no-install-recommends apt-utils wget curl git build-essential \
-    vim sudo lsb-release locales bash-completion tzdata gosu gedit htop nano libserial-dev
+RUN mkdir -p /ur_ws/src
+WORKDIR /ur_ws/src
+COPY dependancies.repos .
+RUN vcs import &lt; dependancies.repos
 
-RUN apt-get update -q && \
-    apt-get install -y gnupg2 iputils-ping usbutils \
-    python3-argcomplete python3-colcon-common-extensions python3-networkx python3-pip python3-rosdep python3-vcstool
-
-RUN rosdep update && \
-    grep -F "source /opt/ros/${ROS_DISTRO}/setup.bash" /root/.bashrc || echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc && \
-    grep -F "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" /root/.bashrc || echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> /root/.bashrc
-
-RUN apt-get update && \
-    apt-get install -y \
-    ros-${ROS_DISTRO}-joint-state-publisher-gui \
-    ros-${ROS_DISTRO}-xacro \
-    ros-${ROS_DISTRO}-demo-nodes-cpp \
-    ros-${ROS_DISTRO}-demo-nodes-py \
-    ros-${ROS_DISTRO}-rviz2 \
-    ros-${ROS_DISTRO}-rqt-reconfigure    
-
-RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    DEBIAN_FRONTEND=noninteractive add-apt-repository ppa:kisak/kisak-mesa
-
-RUN mkdir -p /etc/udev/rules.d
-    # mkdir -p /root/ros2_ws/src/ur5e # Create the metapkg directory in the Image
+WORKDIR /ur_ws
+RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
+    && apt-get update -y \
+    && rosdep install --from-paths src --ignore src -y \
+    && colcon build --symlink-install \
+    && rm -rf /var/lib/apt/lists \
+    && apt-get clean
     
-# COPY . /root/ros2_ws/src/ur5e    # Change the path to your metapkg directory
+ENV UR_TYPE=ur5e
 
-COPY docker/workspace.sh /root/
-COPY docker/entrypoint.sh /root/
-COPY docker/bash_aliases.txt /root/.bashrc_aliases
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
+    && RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
+    && rm -rf /var/lib/apt/lists \
+    && apt-get clean
 
-RUN chmod +x /root/workspace.sh /root/entrypoint.sh
+###################################
+# Overlay Image for UR Simulation #
+###################################
 
-RUN cat /root/.bashrc_aliases >> /root/.bashrc
+FROM base AS overlay
 
-WORKDIR /root
-RUN ./workspace.sh
+RUN mkdir -p overlay_ws/src
+WORKDIR /overlay_ws
+COPY ./Ur_Pose_Optimisation ./src/ur_optim
+RUN source /ur_ws/install/setup.bash \
+    && apt-get update -y \
+    && rosdep install --from-paths src --ignore src -y \
+    && colcon build --symlink-install \
+    && rm -rf /var/lib/apt/lists \
+    && apt-get clean
 
-RUN echo "source /root/ros2_ws/install/setup.bash" >> /root/.bashrc
+COPY ./entrypoint.sh /
+ENTRYPOINT [ "/entrypoint.sh" ]
 
-ENTRYPOINT ["/root/entrypoint.sh"]
-
-CMD ["/bin/bash", "-c", "tail -f /dev/null"]

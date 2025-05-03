@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  base:
+    image: ur_sim:base
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        ROS_DISTRO: jazzy
+      target: base
+    stdin_open: true
+    tty: true
+    network_mode: host
+    ipc: host 
+    privileged: true
+    restart: always
+    ports:
+      - "8080:8080"
+      - "6800:6800"
+    environment: 
+      - UR_TYPE=${UR_TYPE:-ur5e}
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - tmp/.X11-unix:tmp/.X11-unix:rw
+      - ${XAUTHORITY:-$HOME/.Xauthority}:/root/.Xauthority
+    networks:
+      ur_sim:
+        ipv4_address: 192.168.56.101
+
+  overlay:
+    extends: base
+    image: ur_sim:overlay
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: overlay
+  
+  demo-sim:
+    extends: overlay
+    command: ros2 launch ur_optim run_optim.launch.py
+
+  demo-behavior-py:
+    extends: overlay
+    command: >
+      ros2 launch ur_autonomy ur_demo_behavior_py.launch.py
+      tree_type:=${BT_TYPE:?}
+      enable_vision:=${ENABLE_VISION:?}
+      target_color:=${TARGET_COLOR:?}
+
+  demo-behavior-cpp:
+    extends: overlay
+    command: >
+      ros2 launch ur_autonomy ur_demo_behavior_cpp.launch.py
+      tree_type:=${BT_TYPE:?}
+      enable_vision:=${ENABLE_VISION:?}
+      target_color:=${TARGET_COLOR:?}
+
+netwroks:
+  ur_sim:
+    ipam:
+      driver: default
+      config:
+        - subnet: "192.168.56.0/24" 
